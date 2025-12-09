@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flashcard Review</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 900px;
+    margin: 50px auto;
+    text-align: center;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 30px;
+  }
+  th, td {
+    border: 1px solid #333;
+    padding: 12px;
+    vertical-align: top;
+  }
+  th {
+    background-color: #b0d4f1;
+  }
+  caption {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 25px;
+    font-size: 18px;
+  }
+  .rowItem {
+    margin-bottom: 10px;
+    text-align: left;
+  }
+</style>
+</head>
+<body>
+
+<h1>Flashcard Review</h1>
+
+<table>
+  <caption>Words to Review and Known Words</caption>
+  <thead>
+    <tr>
+      <th>Words to Review</th>
+      <th>Known Words</th>
+    </tr>
+  </thead>
+  <tbody id="reviewTableBody">
+    <tr>
+      <td id="reviewWords"></td>
+      <td id="knownWords"></td>
+    </tr>
+  </tbody>
+</table>
+
+<button id="backBtn">Back to Flashcards</button>
+
+<script>
+  // Retrieve arrays
+  let reviewFlashcards = JSON.parse(localStorage.getItem('reviewFlashcards')) || [];
+  let knownFlashcards = JSON.parse(localStorage.getItem('knownFlashcards')) || [];
+
+  // Remove any word that appears in both lists → KEEP ONLY in review list
+  const reviewWordsOnly = new Set(reviewFlashcards.map(c => c.front));
+  knownFlashcards = knownFlashcards.filter(c => !reviewWordsOnly.has(c.front));
+
+  // Save cleaned list back to localStorage so it stays fixed
+  localStorage.setItem("knownFlashcards", JSON.stringify(knownFlashcards));
+
+  // Format for display (no bullets)
+  function formatFlashcards(arr, showDefinition = false) {
+    if (arr.length === 0) return '<em>None</em>';
+
+    return arr.map(card => {
+      const def = card.back && card.back.trim() !== "" ? card.back : "(definition missing)";
+      return `<div class="rowItem"><strong>${card.front}</strong>${showDefinition ? ": " + def : ""}</div>`;
+    }).join('');
+  }
+
+  // REVIEW: show word + definition
+  document.getElementById('reviewWords').innerHTML = formatFlashcards(reviewFlashcards, true);
+
+  // KNOWN: show word only
+  document.getElementById('knownWords').innerHTML = formatFlashcards(knownFlashcards, false);
+
+  // Back button
+  document.getElementById('backBtn').addEventListener('click', () => {
+    window.location.href = "ISEE_Flashcards.html";
+  });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Flashcard App</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    max-width: 700px;
+    margin: 50px auto;
+    text-align: center;
+    background-color: #cce7ff; /* Light blue background */
+  }
+  #flashcard-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 30px 0;
+  }
+  #flashcard {
+    border: 2px solid #333;
+    border-radius: 10px;
+    padding: 40px 50px;
+    font-size: 24px;
+    min-height: 140px;
+    width: 350px;
+    background: white; /* white flashcard */
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    user-select: none;
+    transition: background 0.3s;
+    cursor: default;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    height: 140px; /* or keep your current min-height */
+  }
+  #flashcard.flipped {
+    background: #f0f8ff; /* subtle difference when flipped */
+  }
+  button {
+    margin: 10px 15px;
+    padding: 10px 25px;
+    font-size: 18px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid #333;
+    background: white;
+    transition: background-color 0.2s;
+  }
+  button:hover:not(:disabled) {
+    background-color: #d0e7ff;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  /* Arrow buttons styling */
+  #prevBtn, #nextBtn {
+    font-weight: bold;
+    font-size: 30px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    line-height: 0;
+    padding: 0;
+    user-select: none;
+  }
+  #controls-row {
+    margin-top: 10px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+  #action-buttons {
+    margin-top: 30px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Flashcard App</h1>
+
+<div id="flashcard-container">
+  <button id="prevBtn" disabled aria-label="Previous flashcard">&larr;</button>
+  <div id="flashcard" tabindex="0" aria-live="polite">Loading flashcards...</div>
+  <button id="nextBtn" disabled aria-label="Next flashcard">&rarr;</button>
+</div>
+
+<div id="controls-row">
+  <button id="flipBtn" disabled>Show Definition</button>
+</div>
+
+<div id="action-buttons">
+  <button id="knownBtn" disabled>Mark as Known</button>
+  <button id="reviewBtn" disabled>Add to Review</button>
+  <button id="reviewPageBtn" disabled>Go to Review Page</button>
+  <button id="resetBtn" disabled>Reset</button>
+</div>
+
+<script>
+  // Your full list of words and definitions hardcoded here
+  const allFlashcards = [
+    { front: "Abridged (adj)", back: "compressed, reduced, shortened" },
+    { front: "Abrupt (adj)", back: "sudden, blunt, rude" },
+    { front: "Absolute (adj)", back: "complete, full, entire" },
+    { front: "Abundant (adj)", back: "ample, plenty, enough" },
+    { front: "Accentuate (verb)", back: "emphasize, highlight, focus on" },
+    { front: "Adage (noun)", back: "proverb, saying, motto" },
+    { front: "Adamant (adj)", back: "determined, unyielding, firm" },
+    { front: "Adept (adj)", back: "capable, proficient, skilled" },
+    { front: "Admonish (verb)", back: "reprimand, scold, criticize" },
+    { front: "Adorn (verb)", back: "embellish, enhance, garnish" },
+    { front: "Adversary (noun)", back: "enemy, attacker, rival" },
+    { front: "Affluent (adj)", back: "rich, prosperous, well-off" },
+    { front: "Affront (verb)", back: "insult, criticize, offend" },
+    { front: "Aghast (adj)", back: "very surprised, appalled, shocked" },
+    { front: "Agile (adj)", back: "athletic, energetic, lively" },
+    { front: "Ailment (noun)", back: "illness, disease, sickness" },
+    { front: "Alleviate (verb)", back: "relieve, lessen, ease" },
+    { front: "Aloof (adj)", back: "standoffish, detached, haughty" },
+    { front: "Ambiguous (adj)", back: "unclear, vague, obscure" },
+    { front: "Ambivalence (noun)", back: "doubt, hesitation, uncertainty" },
+    { front: "Amiable (adj)", back: "friendly, pleasant, agreeable" },
+    { front: "Ample (adj)", back: "abundant, plentiful, sufficient" },
+    { front: "Anecdote (noun)", back: "story, tale, account" },
+    { front: "Animosity (noun)", back: "extreme dislike, hatred, hostility" },
+    { front: "Anomalous (adj)", back: "unusual, atypical, unnatural" },
+    { front: "Antagonist (noun)", back: "enemy, opponent, competitor" },
+    { front: "Appease (verb)", back: "satisfy, pacify, calm" },
+    { front: "Arduous (adj)", back: "difficult, hard to endure, exhausting" },
+    { front: "Arid (adj)", back: "dry, parched, moistureless" },
+    { front: "Aspire (verb)", back: "aim, hope, strive" },
+    { front: "Barren (adj)", back: "desolate, empty, unproductive" },
+    { front: "Bias (noun)", back: "favoritism, partiality, preference" },
+    { front: "Bizarre (adj)", back: "strange, wild, unusual" },
+    { front: "Blatant (adj)", back: "shameless, conspicuous, obvious" },
+    { front: "Bliss (noun)", back: "gladness, joy, euphoria" },
+    { front: "Boisterous (adj)", back: "noisy, rowdy, raucous" },
+    { front: "Boycott (verb)", back: "avoid, ban, exclude" },
+    { front: "Brazen (adj)", back: "bold, impudent, insolent" },
+    { front: "Calamity (noun)", back: "disaster, tragedy, mishap" },
+    { front: "Callous (adj)", back: "merciless, ruthless, heartless" },
+    { front: "Candid (adj)", back: "honest, blunt, outspoken" },
+    { front: "Captivate (verb)", back: "fascinate, entice, enchant" },
+    { front: "Cater (verb)", back: "help, provide, supply" },
+    { front: "Certify (verb)", back: "approve, authorize, verify" },
+    { front: "Chronic (adj)", back: "persistent, lingering, constant" },
+    { front: "Chronology (noun)", back: "timeline, itinerary, program" },
+    { front: "Cliché (adj)", back: "unoriginal, trite, overdone" },
+    { front: "Clinch (verb)", back: "secure, confirm, finalize" },
+    { front: "Cohesive (adj)", back: "united, connected, close-knit" },
+    { front: "Collaborate (verb)", back: "work together, cooperate, participate" },
+    { front: "Colossal (adj)", back: "very large, enormous, gigantic" },
+    { front: "Comprise (verb)", back: "contain, include, consist" },
+    { front: "Concise (adj)", back: "to the point, succinct, brief" },
+    { front: "Concur (verb)", back: "agree, approve, assent" },
+    { front: "Condescending (adj)", back: "patronizing, arrogant, disdainful" },
+    { front: "Confound (verb)", back: "confuse, perplex, bewilder" },
+    { front: "Contrite (adj)", back: "remorseful, apologetic, repentant" },
+    { front: "Controversial (adj)", back: "disputable, polarizing, contentious" },
+    { front: "Convoluted (adj)", back: "complicated, intricate, confusing" },
+    { front: "Copious (adj)", back: "abundant, extensive, ample" },
+    { front: "Cordial (adj)", back: "friendly, gracious, warm" },
+    { front: "Corrosive (adj)", back: "erosive, caustic, destructive" },
+    { front: "Cower (verb)", back: "cringe, flinch, recoil" },
+    { front: "Crucial (adj)", back: "important, necessary, essential" },
+    { front: "Cryptic (adj)", back: "mysterious, obscure, enigmatic" },
+    { front: "Culpable (adj)", back: "guilty, at fault, blameworthy" },
+    { front: "Dearth (noun)", back: "shortage, lack, deficiency" },
+    { front: "Debacle (noun)", back: "disaster, catastrophe, tragedy" },
+    { front: "Debilitate (verb)", back: "disable, cripple, harm" },
+    { front: "Décor (noun)", back: "furnishing, ornamentation, scenery" },
+    { front: "Deduction (noun)", back: "conclusion, answer, inference" },
+    { front: "Deface (verb)", back: "destroy, vandalize, ruin" },
+    { front: "Deficient (adj)", back: "imperfect, inadequate, faulty" },
+    { front: "Deliberate (adj)", back: "intentional, purposeful, planned" },
+    { front: "Depiction (noun)", back: "drawing, illustration, representation" },
+    { front: "Desist (verb)", back: "cease, stop, discontinue" },
+    { front: "Despondent (adj)", back: "depressed, dejected, morose" },
+    { front: "Destitute (adj)", back: "poor, impoverished, broke" },
+    { front: "Detain (verb)", back: "arrest, apprehend, restrain" },
+    { front: "Detest (verb)", back: "hate, despise, loathe" },
+    { front: "Detrimental (adj)", back: "damaging, destructive, harmful" },
+    { front: "Devour (verb)", back: "swallow, consume, eat" },
+    { front: "Didactic (adj)", back: "educational, preachy, instructive" },
+    { front: "Diminish (verb)", back: "lessen, decline, decrease" },
+    { front: "Discard (verb)", back: "dispose, dump, reject" },
+    { front: "Disdain (noun)", back: "contempt, scorn, dislike" },
+    { front: "Disparate (adj)", back: "contrasting, different, inconsistent" },
+    { front: "Dispose (verb)", back: "discard, eliminate, remove" },
+    { front: "Distort (verb)", back: "misrepresent, alter, warp" },
+    { front: "Divisive (adj)", back: "controversial, polarizing, conflicting" },
+    { front: "Dormant (adj)", back: "inactive, asleep, inoperative" },
+    { front: "Dubious (adj)", back: "doubtful, arguable, questionable" },
+    { front: "Eclectic (adj)", back: "diverse, varied, wide-ranging" },
+    { front: "Effective (adj)", back: "productive, efficient, compelling" },
+    { front: "Elation (noun)", back: "extreme happiness, bliss, glee" },
+    { front: "Eloquent (adj)", back: "articulate, expressive, outspoken" },
+    { front: "Elusive (adj)", back: "hidden, mysterious, puzzling" },
+    { front: "Embargo (noun)", back: "ban, restriction, barrier" },
+    { front: "Embezzle (verb)", back: "steal, pilfer, misappropriate" },
+    { front: "Endeavor (noun)", back: "attempt, effort, struggle" },
+    { front: "Enmity (noun)", back: "hostility, bitterness" },
+    { front: "Equity (noun)", back: "fairness, honesty" },
+    { front: "Eradicate (verb)", back: "destroy, remove" },
+    { front: "Erode (verb)", back: "wear away, deteriorate" },
+    { front: "Esoteric (adj)", back: "mysterious, obscure" },
+    { front: "Evict (verb)", back: "expel, remove" },
+    { front: "Evoke (verb)", back: "elicit, invoke" },
+    { front: "Exaggerated (adj)", back: "overstated, inflated" },
+    { front: "Exclusive (adj)", back: "restricted, unshared" },
+    { front: "Exhaustive (adj)", back: "thorough, complete" },
+    { front: "Exult (verb)", back: "rejoice, celebrate" },
+    { front: "Extol (verb)", back: "acclaim, applaud" },
+    { front: "Extract (verb)", back: "remove, draw out" },
+    { front: "Fabricate (verb)", back: "assemble, manufacture" },
+    { front: "Fallacy (noun)", back: "falsehood, misconception" },
+    { front: "Falter (verb)", back: "hesitate, waver" },
+    { front: "Fastidious (adj)", back: "careful, meticulous" },
+    { front: "Fathomable (adj)", back: "understandable, logical" },
+    { front: "Feeble (adj)", back: "weak, ineffective" },
+    { front: "Fervent (adj)", back: "passionate, intense" },
+    { front: "Fiasco (noun)", back: "disaster, failure" },
+    { front: "Figurative (adj)", back: "symbolic, descriptive" },
+    { front: "Flamboyant (adj)", back: "flashy, extravagant" },
+    { front: "Florid (adj)", back: "ornate, decorative" },
+    { front: "Flourish (verb)", back: "thrive, prosper" },
+    { front: "Foresee (verb)", back: "anticipate, predict" },
+    { front: "Formidable (adj)", back: "intimidating, difficult" },
+    { front: "Fortitude (noun)", back: "courage, strength" },
+    { front: "Frenetic (adj)", back: "frantic, energetic" },
+    { front: "Frivolous (adj)", back: "silly, foolish" },
+    { front: "Frugal (adj)", back: "economical, thrifty" },
+    { front: "Futile (adj)", back: "useless, ineffective" },
+    { front: "Genuine (adj)", back: "authentic, real" },
+    { front: "Gloat (verb)", back: "brag, boast" },
+    { front: "Grapple (verb)", back: "wrestle, contend" },
+    { front: "Grave (adj)", back: "serious, somber" },
+    { front: "Gregarious (adj)", back: "sociable, outgoing" },
+    { front: "Guerrilla (noun)", back: "rebel, soldier" },
+    { front: "Gullible (adj)", back: "trusting, naïve" },
+    { front: "Haphazard (adj)", back: "random, careless" },
+    { front: "Heritage (noun)", back: "tradition, culture" },
+    { front: "Hierarchy (noun)", back: "ranking, order" },
+    { front: "Hybrid (noun)", back: "mixture, combination" },
+    { front: "Hypocrisy (noun)", back: "deceit, insincerity" },
+    { front: "Hysterical (adj)", back: "very upset, frantic" },
+    { front: "Immune (adj)", back: "resistant, unaffected" },
+    { front: "Impartial (adj)", back: "fair, neutral" },
+    { front: "Impertinent (adj)", back: "rude, disrespectful" },
+    { front: "Imprudent (adj)", back: "reckless, foolish" },
+    { front: "Incentive (noun)", back: "motivation, inducement" },
+    { front: "Incite (verb)", back: "provoke, encourage" },
+    { front: "Indescribable (adj)", back: "beyond words" },
+    { front: "Indigenous (adj)", back: "native, inborn" },
+    { front: "Inept (adj)", back: "unskilled, clumsy" },
+    { front: "Inference (noun)", back: "conclusion, deduction" },
+    { front: "Initial (adj)", back: "beginning, primary" },
+    { front: "Innate (adj)", back: "inborn, intrinsic" },
+    { front: "Insolent (adj)", back: "disrespectful, rude" },
+    { front: "Instigate (verb)", back: "provoke, initiate" },
+    { front: "Intimidate (verb)", back: "frighten, threaten" },
+    { front: "Intricate (adj)", back: "complicated, complex" },
+    { front: "Introspection (noun)", back: "self-analysis, reflection" },
+    { front: "Inundate (verb)", back: "overwhelm, drown" },
+    { front: "Irate (adj)", back: "angry, furious" },
+    { front: "Jeer (verb)", back: "ridicule, sneer" },
+    { front: "Jocular (adj)", back: "funny, playful" },
+    { front: "Jovial (adj)", back: "happy, cheerful" },
+    { front: "Keen (adj)", back: "eager, sharp" },
+    { front: "Kinship (noun)", back: "family, relation" },
+    { front: "Labyrinth (noun)", back: "maze, complication" },
+    { front: "Lackluster (adj)", back: "dull, boring" },
+    { front: "Laconic (adj)", back: "brief, terse" },
+    { front: "Lament (verb)", back: "mourn, grieve" },
+    { front: "Languid (adj)", back: "drooping" },
+    { front: "Languid (adj)", back: "drooping, sluggish, weak" },
+  { front: "Lavish (adj)", back: "extravagant, abundant" },
+  { front: "Lenient (adj)", back: "tolerant, forgiving" },
+  { front: "Listless (adj)", back: "spiritless, tired" },
+  { front: "Lofty (adj)", back: "elevated, arrogant" },
+  { front: "Lucrative (adj)", back: "profitable, beneficial" },
+  { front: "Maneuver (verb)", back: "navigate, steer" },
+  { front: "Mediocre (adj)", back: "average, decent" },
+  { front: "Medley (noun)", back: "assortment, variety" },
+  { front: "Meticulous (adj)", back: "careful, precise" },
+  { front: "Minuscule (adj)", back: "tiny, very small" },
+  { front: "Mosaic (noun)", back: "collage, montage" },
+  { front: "Motley (adj)", back: "mixed, assorted" },
+  { front: "Mundane (adj)", back: "ordinary, commonplace" },
+  { front: "Mutation (noun)", back: "change, variation" },
+  { front: "Naïve (adj)", back: "innocent, trusting" },
+  { front: "Nemesis (noun)", back: "opponent, rival" },
+  { front: "Nonchalant (adj)", back: "casual, unconcerned" },
+  { front: "Nostalgia (noun)", back: "longing, sentimentality" },
+  { front: "Notorious (adj)", back: "infamous, disreputable" },
+  { front: "Novel (adj)", back: "new, original" },
+  { front: "Nuance (noun)", back: "slight difference" },
+  { front: "Nuisance (noun)", back: "annoyance, inconvenience" },
+  { front: "Obdurate (adj)", back: "inflexible, unyielding" },
+  { front: "Obscure (adj)", back: "vague, unclear" },
+  { front: "Obsolete (adj)", back: "outdated, ancient" },
+  { front: "Obstinate (adj)", back: "stubborn, determined" },
+  { front: "Opaque (adj)", back: "unclear, hazy" },
+  { front: "Ornate (adj)", back: "fancy, elaborate" },
+  { front: "Ostentatious (adj)", back: "extravagant, gaudy" },
+  { front: "Pacify (verb)", back: "appease, calm" },
+  { front: "Palpate (verb)", back: "touch, feel" },
+  { front: "Paradox (noun)", back: "contradiction, absurdity" },
+  { front: "Paraphrase (verb)", back: "summarize, rephrase" },
+  { front: "Parasite (noun)", back: "leech, freeloader" },
+  { front: "Perceptive (adj)", back: "insightful, alert" },
+  { front: "Perpetuate (verb)", back: "maintain, preserve" },
+  { front: "Persevere (verb)", back: "persist, endure" },
+  { front: "Pester (verb)", back: "annoy, harass" },
+  { front: "Petite (adj)", back: "small, miniature" },
+  { front: "Plateau (verb)", back: "stabilize, flatten" },
+  { front: "Ponder (verb)", back: "consider, contemplate" },
+  { front: "Pragmatic (adj)", back: "practical, realistic" },
+  { front: "Precaution (noun)", back: "safeguard, protection" },
+  { front: "Preclude (verb)", back: "prevent, hinder" },
+  { front: "Precocious (adj)", back: "advanced, mature" },
+  { front: "Prolific (adj)", back: "productive, abundant" },
+  { front: "Prose (noun)", back: "essay, written text" },
+  { front: "Prosperous (adj)", back: "successful, wealthy" },
+  { front: "Protagonist (noun)", back: "hero, main character" },
+  { front: "Provoke (verb)", back: "anger, irritate" },
+  { front: "Proximity (noun)", back: "closeness, vicinity" },
+  { front: "Pulverize (verb)", back: "shatter, crush" },
+  { front: "Quandary (noun)", back: "dilemma, predicament" },
+  { front: "Quarantine (verb)", back: "isolate, separate" },
+  { front: "Query (noun)", back: "doubt, suspicion" },
+  { front: "Quota (noun)", back: "allowance, portion" },
+  { front: "Ravenous (adj)", back: "very hungry, greedy" },
+  { front: "Recede (verb)", back: "withdraw, diminish" },
+  { front: "Rectify (verb)", back: "correct, improve" },
+  { front: "Redundant (adj)", back: "repetitive, superfluous" },
+  { front: "Renaissance (noun)", back: "renewal, rebirth" },
+  { front: "Repeal (verb)", back: "abolish, cancel" },
+  { front: "Replenish (verb)", back: "refill, refresh" },
+  { front: "Repose (noun)", back: "restfulness, calm" },
+  { front: "Resilience (noun)", back: "stamina, endurance" },
+  { front: "Resolute (adj)", back: "determined, persistent" },
+  { front: "Respective (adj)", back: "specific, individual" },
+  { front: "Restore (verb)", back: "revive, renew" },
+  { front: "Revere (verb)", back: "admire, worship" },
+  { front: "Rouse (verb)", back: "awaken, excite" },
+  { front: "Sagacious (adj)", back: "wise, discerning" },
+  { front: "Sentimental (adj)", back: "emotional, tender" },
+  { front: "Serene (adj)", back: "calm, peaceful" },
+  { front: "Sever (verb)", back: "cut, separate" },
+  { front: "Silhouette (noun)", back: "outline, shadow" },
+  { front: "Simulate (verb)", back: "imitate, mimic" },
+  { front: "Sly (adj)", back: "clever, cunning" },
+  { front: "Solitary (adj)", back: "alone, isolated" },
+  { front: "Spectacle (noun)", back: "display, show" },
+  { front: "Spectator (noun)", back: "observer, watcher" },
+  { front: "Spectrum (noun)", back: "range, scope" },
+  { front: "Spontaneous (adj)", back: "impulsive, unplanned" },
+  { front: "Stark (adj)", back: "harsh, severe" },
+  { front: "Stealthy (adj)", back: "secretive, sneaky" },
+  { front: "Stereotype (noun)", back: "cliché, generalization" },
+  { front: "Stifle (verb)", back: "suppress, restrain" },
+  { front: "Subdue (verb)", back: "conquer, defeat" },
+  { front: "Sullen (adj)", back: "gloomy, dismal" },
+  { front: "Surmise (verb)", back: "guess, suppose" },
+  { front: "Superfluous (adj)", back: "extra, unnecessary" },
+  { front: "Symbiosis (noun)", back: "cooperation, collaboration" },
+  { front: "Synthetic (adj)", back: "artificial, fake" },
+  { front: "Tacit (adj)", back: "unspoken, implied" },
+  { front: "Tamper (verb)", back: "interfere, alter" },
+  { front: "Tedious (adj)", back: "boring, tiresome" },
+  { front: "Temperate (adj)", back: "mild, restrained" },
+  { front: "Tempo (noun)", back: "pace, rhythm" },
+  { front: "Tenacious (adj)", back: "persistent, stubborn" },
+  { front: "Tentative (adj)", back: "hesitant, uncertain" },
+  { front: "Tepid (adj)", back: "lukewarm, unenthusiastic" },
+  { front: "Timid (adj)", back: "shy, bashful" },
+  { front: "Tirade (noun)", back: "rant, outburst" },
+  { front: "Transitory (adj)", back: "temporary, fleeting" },
+  { front: "Tranquil (adj)", back: "peaceful, calm" },
+  { front: "Trivial (adj)", back: "unimportant, insignificant" },
+  { front: "Tumultuous (adj)", back: "agitated, disorderly" },
+  { front: "Unanimous (adj)", back: "in agreement, united" },
+  { front: "Undermine (verb)", back: "weaken, sabotage" },
+  { front: "Unison (noun)", back: "harmony, accord" },
+  { front: "Vacant (adj)", back: "empty, unoccupied" },
+  { front: "Vacillate (verb)", back: "waver, fluctuate" },
+  { front: "Venerable (adj)", back: "respected, esteemed" },
+  { front: "Verify (verb)", back: "confirm, validate" },
+  { front: "Vibrant (adj)", back: "lively, colorful" },
+  { front: "Vigilant (adj)", back: "watchful, attentive" },
+  { front: "Vigor (noun)", back: "energy, power" },
+  { front: "Vile (adj)", back: "offensive, horrible" },
+  { front: "Volatile (adj)", back: "explosive, erratic" },
+  { front: "Voracious (adj)", back: "ravenous, insatiable" },
+  { front: "Wane (verb)", back: "diminish, lessen" },
+  { front: "Wary (adj)", back: "cautious, careful" },
+  { front: "Whimsical (adj)", back: "playful, quirky" },
+  { front: "Witty (adj)", back: "clever, amusing" },
+  { front: "Woe (noun)", back: "sorrow, sadness" },
+  { front: "Wrath (noun)", back: "anger, fury" },
+  { front: "Zeal (noun)", back: "enthusiasm, devotion" },
+  { front: "Anxious (adj)", back: "nervous, worried" },
+  { front: "Arrogant (adj)", back: "conceited, overconfident" },
+  { front: "Authentic (adj)", back: "genuine, real" },
+  { front: "Benevolent (adj)", back: "kind, charitable" },
+  { front: "Cautious (adj)", back: "careful, wary" },
+  { front: "Coherent (adj)", back: "clear, logical" },
+  { front: "Compassion (noun)", back: "sympathy, empathy" },
+  { front: "Confident (adj)", back: "assured, self-reliant" },
+  { front: "Conspicuous (adj)", back: "noticeable, obvious" },
+  { front: "Cumulative (adj)", back: "collective, accumulated" },
+  { front: "Decisive (adj)", back: "resolute, determined" },
+  { front: "Diligent (adj)", back: "hardworking, persistent" },
+  { front: "Discreet (adj)", back: "tactful, prudent" },
+  { front: "Elated (adj)", back: "joyful, ecstatic" },
+  { front: "Emphasize (verb)", back: "highlight, stress" },
+  { front: "Erratic (adj)", back: "unpredictable, irregular" },
+  { front: "Exemplary (adj)", back: "ideal, commendable" },
+  { front: "Fragile (adj)", back: "delicate, breakable" },
+  { front: "Fundamental (adj)", back: "basic, essential" },
+  { front: "Generous (adj)", back: "charitable, giving" },
+  { front: "Hesitant (adj)", back: "uncertain, reluctant" },
+  { front: "Inevitable (adj)", back: "unavoidable, certain" },
+  { front: "Illuminate (verb)", back: "brighten, clarify" },
+  { front: "Impulsive (adj)", back: "spontaneous, rash" },
+  { front: "Industrious (adj)", back: "hardworking, diligent" },
+  { front: "Innovative (adj)", back: "inventive, original" },
+  { front: "Insightful (adj)", back: "perceptive, wise" },
+  { front: "Intrepid (adj)", back: "fearless, bold" },
+  { front: "Optimistic (adj)", back: "hopeful, positive" },
+  { front: "Perilous (adj)", back: "dangerous, risky" },
+  { front: "Predicament (noun)", back: "dilemma, difficulty" },
+  { front: "Proficient (adj)", back: "skilled, competent" },
+  { front: "Punctual (adj)", back: "timely, prompt" },
+  { front: "Reclusive (adj)", back: "isolated, solitary" },
+  { front: "Reluctant (adj)", back: "unwilling, hesitant" },
+  { front: "Resilient (adj)", back: "tough, adaptable" },
+  { front: "Substantial (adj)", back: "significant, considerable" },
+  { front: "Transient (adj)", back: "temporary, fleeting" },
+  { front: "Unequivocal (adj)", back: "clear, unambiguous" },
+  { front: "Unprecedented (adj)", back: "unparalleled, unique" },
+  { front: "Valiant (adj)", back: "courageous, brave" },
+  { front: "Versatile (adj)", back: "adaptable, flexible" },
+  { front: "Vindicate (verb)", back: "justify, clear" },
+  { front: "Vulnerable (adj)", back: "exposed, defenseless" },
+  { front: "Zealous (adj)", back: "passionate, fervent" },
+  { front: "Adaptable (adj)", back: "flexible, adjustable" },
+  { front: "Ambivalent (adj)", back: "uncertain, mixed" },
+  { front: "Anomaly (noun)", back: "irregularity, exception" },
+  { front: "Apathy (noun)", back: "indifference, unconcern" },
+  { front: "Apprehensive (adj)", back: "anxious, uneasy" },
+  { front: "Arbitrary (adj)", back: "random, capricious" },
+  { front: "Articulate (adj)", back: "eloquent, expressive" },
+  { front: "Astute (adj)", back: "shrewd, perceptive" },
+  { front: "Authenticity (noun)", back: "genuineness, truth" },
+  { front: "Belligerent (adj)", back: "aggressive, hostile" },
+  { front: "Candor (noun)", back: "honesty, openness" },
+  { front: "Capitulate (verb)", back: "surrender, yield" },
+  { front: "Clandestine (adj)", back: "secret, covert" },
+  { front: "Coerce (verb)", back: "force, compel" },
+  { front: "Conjecture (noun)", back: "guess, speculation" },
+  { front: "Consensus (noun)", back: "agreement, harmony" },
+  { front: "Contradict (verb)", back: "oppose, challenge" },
+  { front: "Contrive (verb)", back: "devise, plan" },
+  { front: "Cursory (adj)", back: "superficial, brief" },
+  { front: "Daunting (adj)", back: "intimidating, challenging" },
+  { front: "Depict (verb)", back: "portray, illustrate" },
+  { front: "Diverge (verb)", back: "separate, deviate" },
+  { front: "Eccentric (adj)", back: "odd, unconventional" },
+  { front: "Empathy (noun)", back: "understanding, compassion" },
+  { front: "Enigmatic (adj)", back: "mysterious, puzzling" },
+  { front: "Erroneous (adj)", back: "incorrect, mistaken" },
+  { front: "Ethical (adj)", back: "moral, principled" },
+  { front: "Euphoria (noun)", back: "elation, happiness" },
+  { front: "Exacerbate (verb)", back: "worsen, intensify" },
+  { front: "Exemplify (verb)", back: "illustrate, demonstrate" },
+  { front: "Expedite (verb)", back: "accelerate, hasten" },
+  { front: "Feasible (adj)", back: "possible, viable" },
+  { front: "Abridged (adj)", back: "compressed, reduced, shortened" },
+    { front: "Feasible (adj)", back: "possible, viable" },
+    { front: "Fluctuate (verb)", back: "vary, oscillate" },
+    { front: "Garrulous (adj)", back: "talkative, chatty" },
+    { front: "Hypothetical (adj)", back: "theoretical, supposed" },
+    { front: "Idiosyncrasy (noun)", back: "peculiarity, quirk" },
+    { front: "Imminent (adj)", back: "impending, near" },
+    { front: "Implore (verb)", back: "beg, plead" },
+    { front: "Incongruous (adj)", back: "inconsistent, inappropriate" },
+    { front: "Indignant (adj)", back: "offended, resentful" },
+    { front: "Indispensable (adj)", back: "essential, necessary" },
+    { front: "Innovate (verb)", back: "create, invent" },
+    { front: "Integrity (noun)", back: "honesty, honor" },
+    { front: "Intuitive (adj)", back: "instinctive, perceptive" },
+    { front: "Irascible (adj)", back: "irritable, short-tempered" },
+    { front: "Judicious (adj)", back: "wise, sensible" },
+    { front: "Lethargic (adj)", back: "sluggish, tired" },
+    { front: "Lucid (adj)", back: "clear, understandable" },
+    { front: "Magnanimous (adj)", back: "generous, noble" },
+    { front: "Malevolent (adj)", back: "malicious, evil" },
+    { front: "Metamorphosis (noun)", back: "transformation, change" },
+    { front: "Mitigate (verb)", back: "lessen, reduce" },
+    { front: "Morose (adj)", back: "gloomy, sullen" },
+    { front: "Novice (noun)", back: "beginner, newcomer" },
+    { front: "Oblivious (adj)", back: "unaware, ignorant" },
+    { front: "Ominous (adj)", back: "threatening, menacing" },
+    { front: "Ostensible (adj)", back: "apparent, supposed" },
+    { front: "Paramount (adj)", back: "supreme, foremost" },
+    { front: "Parody (noun)", back: "satire, spoof" },
+    { front: "Partisan (adj)", back: "biased, prejudiced" },
+    { front: "Perfunctory (adj)", back: "superficial, indifferent" },
+    { front: "Perseverance (noun)", back: "persistence, determination" },
+    { front: "Plausible (adj)", back: "believable, credible" },
+    { front: "Poignant (adj)", back: "touching, emotional" },
+    { front: "Precarious (adj)", back: "uncertain, risky" },
+    { front: "Predominant (adj)", back: "main, dominant" },
+    { front: "Prodigy (noun)", back: "genius, wonder" },
+    { front: "Prudent (adj)", back: "wise, cautious" },
+    { front: "Quell (verb)", back: "suppress, subdue" },
+    { front: "Querulous (adj)", back: "complaining, whining" },
+    { front: "Reconcile (verb)", back: "resolve, settle" },
+    { front: "Refute (verb)", back: "disprove, deny" },
+    { front: "Reiterate (verb)", back: "repeat, restate" },
+    { front: "Substantiate (verb)", back: "prove, confirm" },
+    { front: "Surreptitious (adj)", back: "secret, stealthy" },
+    { front: "Tactful (adj)", back: "diplomatic, considerate" },
+    { front: "Abridge (verb)", back: "shorten, condense" },
+    { front: "Altruistic (adj)", back: "selfless, charitable" },
+    { front: "Brevity (noun)", back: "conciseness, shortness" },
+    { front: "Conflate (verb)", back: "combine, merge" },
+    { front: "Diffident (adj)", back: "shy, hesitant" },
+    { front: "Emulate (verb)", back: "imitate, copy" },
+    { front: "Equanimity (noun)", back: "calmness, composure" },
+    { front: "Fortuitous (adj)", back: "lucky, accidental" },
+    { front: "Impeccable (adj)", back: "flawless, perfect" },
+    { front: "Impetuous (adj)", back: "impulsive, rash" },
+    { front: "Inadvertent (adj)", back: "unintentional, accidental" },
+    { front: "Inhospitable (adj)", back: "unfriendly, harsh" },
+    { front: "Insipid (adj)", back: "dull, bland" },
+    { front: "Irrevocable (adj)", back: "irreversible, final" },
+    { front: "Lurid (adj)", back: "sensational, shocking" },
+    { front: "Nebulous (adj)", back: "vague, unclear" },
+    { front: "Nonplussed (adj)", back: "confused, perplexed" },
+    { front: "Opulent (adj)", back: "lavish, wealthy" },
+    { front: "Pretentious (adj)", back: "showy, ostentatious" },
+    { front: "Reprehensible (adj)", back: "blameworthy, disgraceful" },
+    { front: "Scrupulous (adj)", back: "careful, ethical" },
+    { front: "Impervious (adj)", back: "impenetrable, unaffected" },
+    { front: "Impugn (verb)", back: "challenge, question" },
+    { front: "Incessant (adj)", back: "nonstop, continuous" },
+    { front: "Ineffable (adj)", back: "indescribable, unutterable" },
+    { front: "Inexorable (adj)", back: "relentless, unstoppable" },
+    { front: "Intermittent (adj)", back: "sporadic, irregular" },
+    { front: "Mendacious (adj)", back: "dishonest, lying" },
+    { front: "Pernicious (adj)", back: "harmful, destructive" },
+    { front: "Recalcitrant (adj)", back: "stubborn, defiant" },
+    { front: "Sycophant (noun)", back: "flatterer, yes-man" },
+    { front: "Taciturn (adj)", back: "reserved, silent" },
+    { front: "Terse (adj)", back: "brief, concise" },
+    { front: "Trepidation (noun)", back: "fear, anxiety" },
+    { front: "Uncanny (adj)", back: "eerie, strange" },
+    { front: "Vehement (adj)", back: "forceful, intense" },
+    { front: "Verbose (adj)", back: "wordy, long-winded" },
+    { front: "Vilify (verb)", back: "defame, malign" },
+    { front: "Avarice (noun)", back: "greed, desire" },
+    { front: "Clemency (noun)", back: "mercy, leniency" },
+    { front: "Deference (noun)", back: "respect, submission" },
+    { front: "Denigrate (verb)", back: "belittle, disparage" },
+    { front: "Disparage (verb)", back: "criticize, degrade" },
+    { front: "Egregious (adj)", back: "outrageous, shocking" },
+    { front: "Equivocate (verb)", back: "evade, hedge" },
+    { front: "Obsequious (adj)", back: "servile, fawning" },
+    { front: "Placate (verb)", back: "soothe, calm" },
+    { front: "Predilection (noun)", back: "preference, liking" },
+    { front: "Propensity (noun)", back: "tendency, inclination" },
+    { front: "Prosaic (adj)", back: "dull, ordinary" },
+    { front: "Relegate (verb)", back: "downgrade, assign" },
+    { front: "Sanctimonious (adj)", back: "self-righteous, hypocritical" },
+    { front: "Serendipity (noun)", back: "chance, luck" },
+    { front: "Stagnant (adj)", back: "motionless, inactive" },
+    { front: "Ubiquitous (adj)", back: "omnipresent, everywhere" },
+    { front: "Vicarious (adj)", back: "indirect, secondhand" }
+  ];
+
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+  }
+
+  shuffleArray(allFlashcards);
+
+  let currentIndex = 0;
+  let showingFront = true;
+  let knownIndices = new Set();
+  let reviewIndices = new Set();
+  let currentDeck = [...allFlashcards];
+
+  const flashcardEl = document.getElementById("flashcard");
+  const prevBtn = document.getElementById("prevBtn");
+  const nextBtn = document.getElementById("nextBtn");
+  const flipBtn = document.getElementById("flipBtn");
+  const knownBtn = document.getElementById("knownBtn");
+  const reviewBtn = document.getElementById("reviewBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const reviewPageBtn = document.getElementById("reviewPageBtn");
+
+  // -------------------------------------------
+  // LOCAL STORAGE
+  // -------------------------------------------
+  function saveToLocalStorage() {
+  const knownCards = [...knownIndices].map(word =>
+    allFlashcards.find(card => card.front === word)
+  );
+
+  const reviewCards = [...reviewIndices].map(word =>
+    allFlashcards.find(card => card.front === word)
+  );
+
+  localStorage.setItem("knownFlashcards", JSON.stringify(knownCards));
+  localStorage.setItem("reviewFlashcards", JSON.stringify(reviewCards));
+}
+
+
+  function loadFromLocalStorage() {
+    const known = JSON.parse(localStorage.getItem("knownFlashcards")) || [];
+    const review = JSON.parse(localStorage.getItem("reviewFlashcards")) || [];
+
+    knownIndices = new Set(known);
+    reviewIndices = new Set(review);
+
+    reviewPageBtn.disabled = (knownIndices.size === 0 && reviewIndices.size === 0);
+  }
+
+  // -------------------------------------------
+  // DISPLAY CARD
+  // -------------------------------------------
+  function displayCard() {
+    if (currentDeck.length === 0) {
+      flashcardEl.textContent = "No flashcards to show.";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      flipBtn.disabled = true;
+      knownBtn.disabled = true;
+      reviewBtn.disabled = true;
+      resetBtn.disabled = false;
+      flashcardEl.classList.remove("flipped");
+      return;
+    }
+
+    const card = currentDeck[currentIndex];
+    flashcardEl.textContent = showingFront ? card.front : card.back;
+
+    prevBtn.disabled = (currentIndex === 0);
+    nextBtn.disabled = (currentIndex === currentDeck.length - 1);
+
+    flipBtn.disabled = false;
+    knownBtn.disabled = false;
+    reviewBtn.disabled = false;
+    resetBtn.disabled = false;
+  }
+
+  // -------------------------------------------
+  // FLIP
+  // -------------------------------------------
+  flipBtn.addEventListener("click", () => {
+    showingFront = !showingFront;
+    flipBtn.textContent = showingFront ? "Show Definition" : "Show Word";
+    flashcardEl.classList.toggle("flipped", !showingFront);
+    displayCard();
+  });
+
+  // -------------------------------------------
+  // NAVIGATION
+  // -------------------------------------------
+  prevBtn.addEventListener("click", () => {
+    if (currentIndex > 0) {
+      currentIndex--;
+      showingFront = true;
+      flipBtn.textContent = "Show Definition";
+      displayCard();
+    }
+  });
+
+  nextBtn.addEventListener("click", () => {
+    if (currentIndex < currentDeck.length - 1) {
+      currentIndex++;
+      showingFront = true;
+      flipBtn.textContent = "Show Definition";
+      displayCard();
+    }
+  });
+
+  // -------------------------------------------
+  // MARK AS KNOWN
+  // -------------------------------------------
+  knownBtn.addEventListener("click", () => {
+  const card = currentDeck[currentIndex];
+
+  // add to known set
+  knownIndices.add(card.front);
+
+  // remove from review if it was there
+  reviewIndices.delete(card.front);
+
+  saveToLocalStorage();
+
+  currentDeck.splice(currentIndex, 1);
+  if (currentIndex >= currentDeck.length) currentIndex = currentDeck.length - 1;
+
+  showingFront = true;
+  flipBtn.textContent = "Show Definition";
+  reviewPageBtn.disabled = (knownIndices.size === 0 && reviewIndices.size === 0);
+
+  displayCard();
+});
+
+
+  // -------------------------------------------
+  // ADD TO REVIEW (FIXED)
+  // -------------------------------------------
+  reviewBtn.addEventListener("click", () => {
+  const card = currentDeck[currentIndex];
+
+  reviewIndices.add(card.front);
+  knownIndices.delete(card.front); // can't be in both
+
+  saveToLocalStorage();
+
+  currentDeck.splice(currentIndex, 1);
+  if (currentIndex >= currentDeck.length) currentIndex = currentDeck.length - 1;
+
+  showingFront = true;
+  flipBtn.textContent = "Show Definition";
+  reviewPageBtn.disabled = (knownIndices.size === 0 && reviewIndices.size === 0);
+
+  displayCard();
+});
+
+
+  // -------------------------------------------
+  // GO TO REVIEW PAGE
+  // -------------------------------------------
+  reviewPageBtn.addEventListener("click", () => {
+    window.location.href = "review.html";
+  });
+
+  // -------------------------------------------
+  // RESET
+  // -------------------------------------------
+  resetBtn.addEventListener("click", () => {
+    currentDeck = [...allFlashcards];
+    knownIndices.clear();
+    reviewIndices.clear();
+    currentIndex = 0;
+    showingFront = true;
+
+    flipBtn.textContent = "Show Definition";
+
+    localStorage.removeItem("knownFlashcards");
+    localStorage.removeItem("reviewFlashcards");
+
+    reviewPageBtn.disabled = true;
+
+    displayCard();
+  });
+
+  // -------------------------------------------
+  // INIT
+  // -------------------------------------------
+  loadFromLocalStorage();
+  displayCard();
+</script>
+
+
+</body>
+</html>
